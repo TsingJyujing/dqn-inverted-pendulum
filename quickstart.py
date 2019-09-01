@@ -1,39 +1,34 @@
-from math import atan2, pi
+from math import atan2, pi, ceil
 
 import gym
 import numpy
-import roboschool.gym_pendulums as g
 
 from controller import PIDController
+from model import RoboschoolInvertedPendulum
 
 
 def main():
-    type_g = str(type(g))
-    env = gym.make("RoboschoolInvertedPendulum-v1")
-    pid_controller = PIDController(50, 0.0, 10, 0.0165)
-    pid_offset_controller = PIDController(10.0, 0.0, 5, 0.0165)
+    print(str(type(RoboschoolInvertedPendulum)))
+    dt = 0.0165
+    simulate_time = 10  # second
+    env = gym.make("TsingJyujingInvertedPendulum-v1")
+    pid_controller = PIDController(10, 0.0, 10, dt)
+    pid_offset_controller = PIDController(1.0, 0.0, 8, dt)
     observation = env.reset()
     action = numpy.array([0])
-    for _ in range(10000):
+    for _ in range(ceil(simulate_time / dt)):
         env.render()
         observation, reward, done, info = env.step(action)
         theta = atan2(observation[3], observation[2])
         sin_theta = observation[3]
         cos_theta = observation[2]
-        offset = observation[0]
+        omega = observation[4]
+        position_error = observation[0]
         angle_error = theta if theta <= pi else 2 * pi - theta
-        sum_action = pid_controller.step(angle_error)
-        offset_controller = pid_offset_controller.step(offset)
-
-        if angle_error * offset > 0:
-            sum_action += 0
-        else:
-            sum_action += offset_controller
-
+        angle_control_value = pid_controller.step(angle_error)
+        position_control_value = pid_offset_controller.step(position_error)
+        sum_action = angle_control_value + position_control_value
         action[0] = sum_action
-        if done:
-            pass
-            # observation = env.reset()
     env.close()
 
 
