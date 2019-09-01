@@ -15,8 +15,12 @@ class PIDController:
     def get_dt(self, dt: float):
         return dt if dt is not None and dt > 0 else self.__default_dt
 
-    def step(self, error_value: float, dt: float = None):
+    def step(self, error_value: float, error_value_diff: float = None, dt: float = None):
         dif = (error_value - self.last_value) / self.get_dt(dt) if self.last_value is not None else 0.0
         self.last_value = error_value
         self.integral_value += error_value * self.get_dt(dt)
         return self.kp * error_value + self.ki * self.integral_value + self.kd * dif
+
+    def reset(self):
+        self.integral_value = 0
+        self.last_value = None
