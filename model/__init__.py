@@ -1,3 +1,4 @@
+from .reward import FirstOrderReward, Reward
 from gym.envs.registration import register
 
 register(
