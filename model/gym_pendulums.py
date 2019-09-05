@@ -82,7 +82,7 @@ class RoboschoolInvertedPendulum(RoboschoolMujocoXmlEnv):
     def __init__(self, initial_position: Optional[float] = None):
         RoboschoolMujocoXmlEnv.__init__(self, 'inverted_pendulum.xml', 'cart', action_dim=1, obs_dim=5)
         self.initial_position = initial_position if initial_position is not None else 0.0
-        #self.np_random.uniform(low=-.1, high=.1)
+        self.np_random.uniform(low=-.1, high=.1)
 
     def create_single_player_scene(self):
         return SingleRobotEmptyScene(gravity=9.8, timestep=0.0165, frame_skip=1)

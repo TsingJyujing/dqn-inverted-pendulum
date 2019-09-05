@@ -12,5 +12,11 @@ These elements are included in this project:
 
 ## Reference
 
+### Loss/Reward
+
+$$ -R(t) = \theta(t)^2 + \alpha \times v(t) \times F(t) + \beta \times x(t)^2 $$
+
+
 ### Shortens
 - IP: Inverted Pendulum
+
