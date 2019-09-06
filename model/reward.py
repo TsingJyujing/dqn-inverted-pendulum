@@ -24,21 +24,21 @@ class Reward:
     def instantaneous_reward(self, stat: numpy.ndarray) -> float:
         pass
 
-    def update(self, tick: float, stat: numpy.ndarray) -> Tuple[float, float]:
+    def update(self, tick: float, stat: numpy.ndarray) -> Tuple[float, float, numpy.ndarray]:
         inst_q = self.instantaneous_reward(stat)
-        self.reward_buffer.append((tick,inst_q))
+        self.reward_buffer.append((tick, inst_q, stat))
         if len(self.reward_buffer) > self.future_step:
-            self.reward_buffer.pop(0)
-
-        sum_weight = 0.0
-        sum_weighted_reward = 0.0
-        for t, r in self.reward_buffer:
-            w = self.get_decay(abs(tick - t))
-            sum_weight += w
-            sum_weighted_reward += w * r
-
-        Q = sum_weighted_reward / sum_weight
-        return Q, inst_q
+            p_tick, p_Q, p_stat = self.reward_buffer.pop(0)
+            sum_weight = 0.0
+            sum_weighted_reward = 0.0
+            for t, r, _ in self.reward_buffer:
+                w = self.get_decay(abs(p_tick - t))
+                sum_weight += w
+                sum_weighted_reward += w * r
+            Q = sum_weighted_reward / sum_weight
+            return Q, inst_q, p_stat
+        else:
+            return inst_q, inst_q, stat
 
 
 class FirstOrderReward(Reward):

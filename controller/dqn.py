@@ -61,22 +61,49 @@ class DQNController:
             F = self.force_set.numpy()[int(torch.argmax(result).numpy())]
 
         stats = numpy.array([offset, velocity, theta, F])
-        Q, inst_q = self.reward.update(tick, stats)
-        self.training_data.append((Q, stats))
+        Q, inst_q, p_stat = self.reward.update(tick, stats)
+        self.training_data.append((Q, p_stat))
         if len(self.training_data) > self.training_data_limit:
             self.training_data.pop(0)
-        print("Tick={} Q={} instQ={} F={}".format(tick, Q, inst_q, F))
+        print("\rTick={} Q={} instQ={} F={}".format(tick, Q, inst_q, F), end="")
         return F
 
-    def train(self, steps: int):
-        self.model.train(True)
-        X = torch.FloatTensor([stat for _, stat in self.training_data])
-        y = torch.FloatTensor([Q for Q, _ in self.training_data])
-        for i in range(steps):
+    def train(self, steps: int = 10000, early_stop_move: int = 10):
+        print("")
+
+        X_raw = torch.FloatTensor([stat for _, stat in self.training_data])
+        y_raw = torch.FloatTensor([Q for Q, _ in self.training_data])
+        index_list = list(range(len(self.training_data)))
+        random.shuffle(index_list)
+        split_point = ceil(len(index_list) * 0.2)
+        X_test = X_raw[:split_point, :]
+        y_test = y_raw[:split_point]
+        X = X_raw[split_point:, :]
+        y = y_raw[split_point:]
+        min_loss = 10000000000
+        min_loss_index = -1
+        for totle_move in range(steps):
+            self.model.train(True)
             self.optimizor.zero_grad()
             pred = self.model(X)
             loss = torch.nn.functional.mse_loss(pred[:, 0], y)
             loss.backward()
             self.optimizor.step()
-            print("Step={} Loss={}".format(i, loss.detach().numpy()))
-        self.model.train(False)
+            self.model.train(False)
+            test_pred = self.model(X_test)
+            test_loss = torch.nn.functional.mse_loss(test_pred[:, 0], y_test)
+            test_loss_value = test_loss.detach().numpy()
+            print("\rStep={} Loss={} TestLoss={}, EarlyStop={}".format(
+                totle_move,
+                loss.detach().numpy(),
+                test_loss_value,
+                (totle_move - min_loss_index)
+            ), end="")
+            if test_loss_value <= min_loss:
+                min_loss_index = totle_move
+                min_loss = test_loss_value
+
+            if (totle_move - min_loss_index) >= early_stop_move:
+                break
+
+        print("")
