@@ -14,7 +14,7 @@ def main():
     print(str(type(RoboschoolInvertedPendulum)))
 
     dt = 0.0165
-    simulate_time = 10
+    simulate_time = 3600
     greedy = lambda t: random.random() < 0.1
     model_file = "dqn.pkl"
 
@@ -50,7 +50,7 @@ def main():
         position_error = observation[0]
         angle_error = theta if theta <= pi else 2 * pi - theta
         action[0] = controller.step(tick, offset=position_error, velocity=vel, theta=angle_error)
-        if i % 1000 == 199:
+        if i % 200 == 199:
             controller.train()
     env.close()
     with open(model_file, "wb") as fp:
