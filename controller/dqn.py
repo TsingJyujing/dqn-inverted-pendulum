@@ -34,38 +34,51 @@ class DQNController:
             reward: Reward,
             greedy_epsilon: Callable[[float], bool],
             force_set: Iterable[float],
-            training_time: float
+            training_time: float,
+            dqn_layers: List[int] = None
 
     ):
+        if dqn_layers is None:
+            dqn_layers = [5, 32, 32, 1]
         self.greedy_epsilon = greedy_epsilon
         self.reward = reward
         self.training_data = []
         self.training_data_limit = ceil(training_time / reward.dt)
-        self.model = DQN([4, 32, 32, 1])
+        self.set_model(DQN(dqn_layers))
         self.force_set = torch.FloatTensor(force_set)
+
+    def set_model(self, new_model):
+        self.model = new_model
         self.optimizor = torch.optim.Adam(
             self.model.parameters(),
             lr=0.01
         )
 
-    def step(self, tick: float, offset: float, velocity: float, theta: float) -> float:
-        violent_input = torch.zeros(size=(self.force_set.shape[0], 4), dtype=torch.float32)
+    def step(self, tick: float, offset: float, velocity: float, theta: float, omega: float) -> float:
+        violent_input = torch.zeros(size=(self.force_set.shape[0], 5), dtype=torch.float32)
         violent_input[:, 0] = offset
         violent_input[:, 1] = velocity
         violent_input[:, 2] = theta
-        violent_input[:, 3] = self.force_set
+        violent_input[:, 3] = omega
+        violent_input[:, 4] = self.force_set
         if self.greedy_epsilon(tick):
-            F = (random.random() - 0.5) * 20
+            F = (random.random() - 0.5) * 10
         else:
             result = self.model(violent_input)
             F = self.force_set.numpy()[int(torch.argmax(result).numpy())]
-
-        stats = numpy.array([offset, velocity, theta, F])
+        status_str = "x={} v={} theta={} omega={} F={}".format(
+            offset,
+            velocity,
+            theta,
+            omega,
+            F
+        )
+        stats = numpy.array([offset, velocity, theta, omega, F])
         Q, inst_q, p_stat = self.reward.update(tick, stats)
         self.training_data.append((Q, p_stat))
         if len(self.training_data) > self.training_data_limit:
             self.training_data.pop(0)
-        print("\rTick={} Q={} instQ={} F={}".format(tick, Q, inst_q, F), end="")
+        print("\rTick={} Q={} instQ={} status: {}   ".format(tick, Q, inst_q, status_str), end="")
         return F
 
     def train(self, steps: int = 10000, early_stop_move: int = 10):

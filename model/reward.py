@@ -43,17 +43,28 @@ class Reward:
 
 class FirstOrderReward(Reward):
 
-    def __init__(self, dt: float, power_factor: float, offset_factor: float, r_decay: float,
-                 effect_limit: float = 0.05):
+    def __init__(
+            self,
+            dt: float,
+            power_factor: float,
+            offset_factor: float,
+            omega_factor: float,
+            r_decay: float,
+            effect_limit: float = 0.05
+    ):
         super().__init__(dt, r_decay, effect_limit)
         self.power_factor = power_factor
         self.offset_factor = offset_factor
+        self.omega_factor = omega_factor
 
     def instantaneous_reward(self, stat: numpy.ndarray) -> float:
         """
-                    0        1        2       3
-        :param stat: offset, velocity, theta , force
+                    0        1        2       3     4
+        :param stat: offset, velocity, theta, omega, force
         :return:
         """
-        instr = stat[2] * stat[2] + self.power_factor * stat[1] * stat[3] + self.offset_factor * stat[0] * stat[0]
+        instr = stat[2] * stat[2]
+        instr += self.power_factor * abs(stat[1]) * abs(stat[4])
+        instr += self.offset_factor * pow(stat[0],4)
+        instr += self.omega_factor * stat[3] * stat[3]
         return -instr
