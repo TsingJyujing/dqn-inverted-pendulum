@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from math import log, exp
+from math import log, exp, pi
 from typing import Tuple
 
 import numpy
@@ -63,8 +63,13 @@ class FirstOrderReward(Reward):
         :param stat: offset, velocity, theta, omega, force
         :return:
         """
-        instr = stat[2] * stat[2]
-        instr += self.power_factor * abs(stat[1]) * abs(stat[4])
-        instr += self.offset_factor * pow(stat[0],4)
+        theta = stat[2]
+        instr = exp(abs(theta)) - 1
+        if abs(theta) > 0.7:
+            instr += self.offset_factor * (exp(pi) - 1)
+        else:
+            instr += self.offset_factor * (exp(abs(stat[0])) - 1)
+        instr += self.power_factor * abs(stat[1] * stat[4])
+
         instr += self.omega_factor * stat[3] * stat[3]
         return -instr

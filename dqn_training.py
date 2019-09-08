@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 import random
@@ -19,7 +18,7 @@ except:
     print("Error while loading the model.")
 
 
-@click.command(name="run_dqn")
+@click.command()
 @click.option("--greedy-lambda", default="lambda t:random.random() < 0.1", help="The prob of greedy randomly")
 @click.option("--render/--no-render", default=False, help="Is render the environment")
 @click.option("--train/--no-train", default=False, help="Is training the network")
@@ -35,6 +34,7 @@ except:
 @click.option("--training-time-range", default=800.0, help="How many seconds using for training")
 @click.option("--training-max-epochs", default=10000, help="While training, how many steps to iter")
 @click.option("--training-early-stopping-epochs", default=30, help="While training, how many steps to iter")
+@click.option("--noise-level", default=3.0, help="Noise level while evaluating")
 def main(
         greedy_lambda: str,
         render: bool,
@@ -51,10 +51,10 @@ def main(
         training_time_range: float,
         training_max_epochs: int,
         training_early_stopping_epochs: int,
+        noise_level: float,
 
 ):
-    data_tag = datetime.datetime.now().strftime("DQN-IP1-%Y%m%d-%H%M%S")
-    data_dir = os.path.join(data_log, data_tag)
+    data_dir = data_log  # fixme remove this
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
         with open(os.path.join(data_dir, "settings.json"), "w") as fp:
@@ -83,6 +83,7 @@ def main(
         greedy_epsilon=greedy,
         force_set=numpy.linspace(-10, 10, 50).tolist(),
         training_time=training_time_range,
+        noise_level=noise_level
     )
 
     if len(load_model) > 0:
@@ -95,10 +96,9 @@ def main(
     env = gym.make("TsingJyujingInvertedPendulum-v1")
     _ = env.reset()
     action = numpy.array([0])
-    angle_error_sum = 0
+    angle_error_log = []
     with open(os.path.join(data_dir, "status.csv"), "w") as fp:
         fp.write("tick,offset,angle,velocity,omega,input_force,decided_force\n")
-
         for i in range(ceil(simulate_time / dt)):
             tick = i * dt
             if render:
@@ -122,10 +122,17 @@ def main(
                 F
             ))
             action[0] = F
-            angle_error_sum += abs(angle_error)
+            angle_error_log.append(angle_error)
             if train and i % train_gap_step == (train_gap_step - 1):
-                print("\n  Average angle error: {}".format(angle_error_sum / train_gap_step))
-                angle_error_sum = 0
+                angle_error_log = numpy.array(angle_error_log)
+                print("Angle Error Detail t={}\n mean(abs(e))={} std(e)={} range(abs)=[{},{}]".format(
+                    tick,
+                    abs(angle_error_log).mean(),
+                    angle_error_log.std(),
+                    abs(angle_error_log).min(),
+                    abs(angle_error_log).max()
+                ))
+                angle_error_log = []
                 controller.train(
                     steps=training_max_epochs,
                     early_stop_move=training_early_stopping_epochs
